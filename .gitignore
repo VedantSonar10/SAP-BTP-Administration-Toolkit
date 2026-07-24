@@ -1,0 +1,28 @@
+# Secrets - never commit real credentials
+.env
+# SAP BTP Credentials
+config/service_key.json
+config/xsuaa_api_access.json
+config/audit_log_service_key.json
+
+# Generated artifacts
+logs/*.log
+reports/*.json
+reports/*.csv
+reports/*.txt
+
+# Keep the directories in git without their generated contents
+!logs/.gitkeep
+!reports/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
