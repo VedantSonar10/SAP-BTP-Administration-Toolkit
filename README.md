@@ -19,6 +19,12 @@ useful even when full API scopes aren't available.
 
 ## Architecture
 
+**Runtime flow** — every menu action follows this same request path, reusing one token across a session:
+
+![Architecture diagram: Your Script authenticates via XSUAA to get an OAuth token, then uses that Bearer token against SAP BTP Platform APIs, returning JSON that becomes dashboard/CSV/JSON output](docs/architecture-diagram.svg)
+
+**Code layering** — how that flow maps onto the folders in this repo:
+
 ```
 ┌─────────────┐      ┌───────────────┐      ┌────────────────────┐
 │   app.py     │─────▶│  api/ layer   │─────▶│  SAP BTP / XSUAA   │
@@ -27,8 +33,8 @@ useful even when full API scopes aren't available.
 │              │      │ users         │
 │              │      └───────────────┘
 │              │      ┌───────────────┐
-│              │─────▶│ services/     │  service key analysis,
-│              │      │ layer         │  endpoint health, reports
+│              │─────▶│ services/     │  service key analysis, quota
+│              │      │ layer         │  alerts, inventory, reports
 │              │      └───────────────┘
 │              │      ┌───────────────┐
 └──────────────┘─────▶│ utils/ layer  │  config, logging, dashboard,
@@ -118,10 +124,21 @@ chat, doc, or commit, rotate it in the BTP cockpit.
   (Reachable / Forbidden / Unauthorized / Timeout / Network Error)
 - **Endpoint Health Checker** — sweeps every endpoint in the service
   key and reports latency + status, colour-coded
-- **Report Generator** — exports a session snapshot as JSON, CSV, and
-  TXT into `reports/`
+- **Report Generator** — exports a session snapshot (auth status, token
+  info, endpoint results) as JSON, CSV, and TXT into `reports/`
+  (`report_*`) — distinct from the subaccount inventory export below,
+  which covers identity + quota + reachability rather than session state
 - **Live Dashboard** — refreshes after every action showing auth,
-  token, and API health at a glance
+  token, API health, and quota alert count at a glance
+- **Quota Alert Checker** — parses Entitlements assignment data and
+  flags anything at or above 80% of its entitled amount, the same
+  threshold check a BTP admin does manually in the cockpit
+- **Subaccount Inventory Export** — a governance-report-style CSV
+  combining identity zone details, entitlement/quota status, and
+  endpoint reachability in one file (`reports/subaccount_inventory_*.csv`)
+- **Colour-coded output throughout** — every table and status line uses
+  `rich`, not just `print()` — Reachable/OK renders green, Forbidden/
+  over-threshold renders red or yellow
 - **Enterprise logging** — rotating `logs/app.log`, every action logged
 - **No raw tracebacks** — every failure path resolves to a clear,
   human-readable message

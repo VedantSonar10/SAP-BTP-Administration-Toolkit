@@ -22,6 +22,8 @@ from api.users import UsersAPI
 from services.access_auditor import AccessAuditor
 from services.cost_tracker import CostTracker
 from services.endpoint_checker import EndpointChecker
+from services.inventory_exporter import InventoryExporter
+from services.quota_checker import QuotaChecker
 from services.report_generator import ReportGenerator
 from services.security_auditor import SecurityAuditor
 from services.service_key_analyzer import ServiceKeyAnalyzer, ServiceKeyInfo
@@ -44,7 +46,9 @@ MENU_OPTIONS = """
 8. Check Cost / Budgets
 9. Audit Roles & Access
 10. Security Audit (Audit Log)
-11. Exit
+11. Check Entitlement Quota Alerts
+12. Export Subaccount Inventory (CSV)
+13. Exit
 """
 
 
@@ -57,6 +61,7 @@ class SessionState:
     token_info: TokenInfo | None = None
     service_key_info: ServiceKeyInfo | None = None
     endpoint_results: list = None
+    quota_statuses: list = None
     dashboard: DashboardState = None
 
     def __post_init__(self):
@@ -64,6 +69,8 @@ class SessionState:
             self.dashboard = DashboardState()
         if self.endpoint_results is None:
             self.endpoint_results = []
+        if self.quota_statuses is None:
+            self.quota_statuses = []
 
 
 def print_menu() -> None:
@@ -189,6 +196,34 @@ def handle_security_audit(state: SessionState, config: AppConfig) -> None:
     state.dashboard.security_audit_status = result.status_label
 
 
+def handle_quota_check(state: SessionState, config: AppConfig) -> None:
+    if not state.token or state.auth is None:
+        console.print("[yellow]Authenticate first.[/yellow]")
+        return
+
+    entitlements = EntitlementsAPI(state.auth.get_service_key(), state.token, timeout=config.timeout)
+    result = entitlements.test_connection()
+
+    checker = QuotaChecker()
+    state.quota_statuses = checker.check(result)
+    state.dashboard.quota_alert_count = sum(1 for s in state.quota_statuses if s.is_over_threshold)
+
+
+def handle_export_inventory(state: SessionState, config: AppConfig) -> None:
+    if state.auth is None:
+        state.auth = Auth(config.service_key_path, timeout=config.timeout)
+    if state.service_key_info is None:
+        console.print("[yellow]Run 'Analyze Service Key' first so identity details are available.[/yellow]")
+        return
+    if not state.endpoint_results:
+        console.print("[yellow]Run 'Endpoint Health Check' first so reachability data is available.[/yellow]")
+        return
+
+    exporter = InventoryExporter()
+    path = exporter.export(state.service_key_info, state.quota_statuses, state.endpoint_results)
+    console.print(f"[bold green]Subaccount inventory exported:[/bold green] {path}")
+
+
 def handle_export_report(state: SessionState) -> None:
     generator = ReportGenerator()
     auth_status = "Authenticated" if state.token else "Not Authenticated"
@@ -236,6 +271,10 @@ def main() -> None:
             elif choice == "10":
                 handle_security_audit(state, config)
             elif choice == "11":
+                handle_quota_check(state, config)
+            elif choice == "12":
+                handle_export_inventory(state, config)
+            elif choice == "13":
                 console.print("[bold blue]Goodbye![/bold blue]")
                 logger.info("Toolkit exited normally")
                 break

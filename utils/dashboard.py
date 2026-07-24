@@ -11,7 +11,6 @@ static "coming soon" panel.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from rich.console import Console
 from rich.panel import Panel
@@ -38,6 +37,7 @@ class DashboardState:
     budgets_status: str = "Not Tested"
     access_audit_status: str = "Not Tested"
     security_audit_status: str = "Not Tested"
+    quota_alert_count: int | None = None  # None = not checked yet
 
 
 _STATUS_ICON = {
@@ -64,6 +64,14 @@ def show_dashboard(state: DashboardState) -> None:
     header.add_row("Authentication", "[green]✅ Authenticated[/green]" if state.authenticated else "[red]❌ Not Authenticated[/red]")
     header.add_row("JWT Status", "[green]✅ Valid[/green]" if state.token_valid else "[dim]— No Token[/dim]")
     header.add_row("Identity Zone", state.identity_zone or "N/A")
+
+    if state.quota_alert_count is None:
+        quota_display = "[dim]— Not Checked[/dim]"
+    elif state.quota_alert_count == 0:
+        quota_display = "[green]✅ All within threshold[/green]"
+    else:
+        quota_display = f"[bold red]⚠ {state.quota_alert_count} over 80% threshold[/bold red]"
+    header.add_row("Quota Alerts", quota_display)
 
     api_table = Table(title="API Health", header_style="bold cyan")
     api_table.add_column("Service")
