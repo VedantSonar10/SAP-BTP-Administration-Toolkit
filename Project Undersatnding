@@ -1,0 +1,38 @@
+What Problem Does It Solve?
+
+Imagine SAP's cloud platform (BTP) is like a big office building with many departments — a Login desk, an Accounts department, 
+a Billing department, a Security office, an HR department. Normally, if you want to check "is everything working today," 
+you'd have to walk to every single department, ask them individually, and write down what they said.
+
+This tool is like a single assistant who walks the whole building for you and comes back with one report — "Login desk: working. 
+Accounts: locked door. Billing: no access. Security office: all clear." Instead of you doing 8 separate walks, you press one button.
+
+Where consultancies like the ones you're targeting (Incture, msg global, Bosch GCC) actually build this: pre-go-live health checks
+before a client's production cutover, recurring quota/cost governance across a client's landscape, and onboarding automation scripts 
+that verify a newly provisioned subaccount is correctly configured
+
+Language & Core Libraries:
+Tool	What it's for
+Python 3.12	-> The programming language everything is written in
+requests ->	Makes HTTP calls (the actual "knock on the department's door")
+rich ->	Prints colored tables/panels in the terminal instead of plain text
+python-dotenv	-> Reads settings from a .env file instead of hardcoding them
+PyJWT	-> Decodes the JWT (the digital ID card/access token)
+
+Real SAP APIs Called
+XSUAA OAuth — /oauth/token (login)
+Accounts Service — /accounts/v1/labels
+Entitlements Service — /entitlements/v1/assignments
+XSUAA SCIM — /Users
+Account Budgets Service — /budgets/v1/budgets
+XSUAA Authorization Management API — /sap/rest/authorization/v2/roles and /rolecollections
+Audit Log Retrieval API — /auditlog/v2/auditlogrecords
+
+
+Code Structure (Architecture Pattern)
+Layered architecture — three layers that only talk downward, never sideways or upward:
+app.py — the menu, controls what happens when you press a number
+api/ — talks to SAP directly over the internet (auth, accounts, entitlements, users)
+services/ — interprets the data (service key analysis, quota checks, cost checks, reports)
+utils/ — shared plumbing (config, logging, dashboard display, error types)
+This is the same separation style used in real enterprise software — so no single file becomes a giant tangle of "does everything."
