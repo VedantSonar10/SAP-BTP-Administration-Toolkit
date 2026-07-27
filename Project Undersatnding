@@ -36,3 +36,10 @@ api/ — talks to SAP directly over the internet (auth, accounts, entitlements, 
 services/ — interprets the data (service key analysis, quota checks, cost checks, reports)
 utils/ — shared plumbing (config, logging, dashboard display, error types)
 This is the same separation style used in real enterprise software — so no single file becomes a giant tangle of "does everything."
+
+Not yet enterprise-ready, because:
+It only checks one subaccount at a time — a real corporate BTP landscape has dozens to hundreds of subaccounts across multiple global accounts
+It's a local CLI you run manually — no scheduling, no alerting, no persistence beyond a CSV on your laptop
+Secrets live in local JSON files — a real company would never let credentials sit in plaintext files on individual laptops; they'd use a vault (SAP Credential Store, HashiCorp Vault, Azure Key Vault)
+No multi-user access control — anyone running the script has full admin visibility; a corporate tool needs its own RBAC layer
+No audit trail for the tool itself — ironic, since it audits BTP, but doesn't log who ran it against what
